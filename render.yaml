@@ -9,5 +9,6 @@ services:
     envVars:
       - key: MONGO_URI
         scope: build,runtime
-      - key: FRONTEND_URL
+      - key: CORS_ORIGIN
+        value: https://musharafa-crypto-app.netlify.app
         scope: build,runtime

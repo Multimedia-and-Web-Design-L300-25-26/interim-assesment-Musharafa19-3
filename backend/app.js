@@ -12,11 +12,10 @@ function normalizeOrigin(origin = '') {
   return origin.trim().replace(/\/+$/, '').toLowerCase();
 }
 
-const rawOrigins = process.env.FRONTEND_URL || 'http://localhost:5173';
+const rawOrigins = process.env.CORS_ORIGIN;
 const allowedOrigins = rawOrigins
-  .split(',')
-  .map((origin) => normalizeOrigin(origin))
-  .filter(Boolean);
+  ? rawOrigins.split(',').map((origin) => normalizeOrigin(origin)).filter(Boolean)
+  : [];
 
 app.use(
   cors({
