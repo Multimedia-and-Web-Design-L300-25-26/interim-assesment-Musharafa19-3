@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: coinbase-clone-api
+    env: node
+    region: ohio
+    plan: free
+    buildCommand: cd backend && npm install && npm run seed
+    startCommand: cd backend && npm start
+    envVars:
+      - key: MONGO_URI
+        scope: build,runtime
+      - key: FRONTEND_URL
+        scope: build,runtime
