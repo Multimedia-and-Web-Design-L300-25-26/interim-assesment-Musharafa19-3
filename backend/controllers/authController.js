@@ -1,83 +1,125 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import User from '../models/User.js';
+import { setAuthCookie, clearAuthCookie } from '../utils/cookies.js';
+import { signToken } from '../utils/token.js';
 
-const User = require('../models/User');
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+function payloadFromRequest(req) {
+  return req.method === 'GET' ? req.query : req.body;
+}
 
-function getCookieOptions() {
-  const isProduction = process.env.NODE_ENV === 'production';
+function cleanString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
+function sanitizeUser(user) {
   return {
-    httpOnly: true,
-    maxAge: SEVEN_DAYS_MS,
-    sameSite: isProduction ? 'none' : 'lax',
-    secure: isProduction,
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
   };
 }
 
-async function register(req, res) {
+export async function register(req, res, next) {
   try {
-    const { name, email, password } = req.body || {};
+    const payload = payloadFromRequest(req);
+    const name = cleanString(payload?.name);
+    const email = cleanString(payload?.email).toLowerCase();
+    const password = cleanString(payload?.password);
 
     if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: 'Name, email, and password are required.' });
+      return res.status(400).json({ message: 'name, email, and password are required.' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+
+    if (name.length > 50) {
+      return res.status(400).json({ message: 'Name must not exceed 50 characters.' });
+    }
+
+    if (email.length > 100) {
+      return res.status(400).json({ message: 'Email must not exceed 100 characters.' });
+    }
+
+    if (password.length > 72) {
+      return res.status(400).json({ message: 'Password must not exceed 72 characters.' });
     }
 
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists.' });
+      return res
+        .status(409)
+        .json({ message: 'Registration failed. Please try again with different credentials.' });
     }
 
-    const user = new User({ name, email, password });
-    await user.save();
+    const user = await User.create({ name, email, password });
+    const token = signToken(user._id.toString());
 
-    return res.status(201).json({ message: 'User registered successfully.' });
+    setAuthCookie(res, token);
+
+    return res.status(201).json({
+      message: 'Registration successful.',
+      user: sanitizeUser(user),
+      token,
+    });
   } catch (error) {
-    console.error("REGISTER ERROR:", error.message, error.stack);
-    return res.status(500).json({ message: 'Server error.', error: error.message });
+    return next(error);
   }
 }
 
-async function login(req, res) {
+export async function login(req, res, next) {
   try {
-    const { email, password } = req.body || {};
+    const payload = payloadFromRequest(req);
+    const email = cleanString(payload?.email).toLowerCase();
+    const password = cleanString(payload?.password);
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: 'Email and password are required.' });
+      return res.status(400).json({ message: 'email and password are required.' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address.' });
     }
 
     const user = await User.findOne({ email }).select('+password');
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
-    const passwordMatches = await bcrypt.compare(password, user.password);
-    if (!passwordMatches) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: 'JWT_SECRET is not set.' });
-    }
+    const token = signToken(user._id.toString());
+    setAuthCookie(res, token);
 
-    const token = jwt.sign({ _id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.cookie('token', token, getCookieOptions());
-
-    return res.status(200).json({ name: user.name, email: user.email });
+    return res.status(200).json({
+      message: 'Login successful.',
+      user: sanitizeUser(user),
+      token,
+    });
   } catch (error) {
-    return res.status(500).json({ message: 'Server error.' });
+    return next(error);
   }
 }
 
-function logout(req, res) {
-  res.clearCookie('token', getCookieOptions());
+export function getProfile(req, res) {
+  return res.status(200).json({ user: sanitizeUser(req.user) });
+}
+
+export function logout(req, res) {
+  clearAuthCookie(res);
   return res.status(200).json({ message: 'Logged out successfully.' });
 }
 
-module.exports = { register, login, logout };

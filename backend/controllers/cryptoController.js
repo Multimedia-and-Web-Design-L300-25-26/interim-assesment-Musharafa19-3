@@ -1,64 +1,76 @@
-const Crypto = require('../models/Crypto');
+import Crypto from '../models/Crypto.js';
 
-async function getAllCrypto(req, res) {
+export async function getAllCrypto(req, res, next) {
   try {
-    const cryptos = await Crypto.find();
-    return res.status(200).json(cryptos);
+    const data = await Crypto.find().sort({ createdAt: -1 });
+    return res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ message: 'Server error.' });
+    return next(error);
   }
 }
 
-async function getGainers(req, res) {
+export async function getTopGainers(req, res, next) {
   try {
-    const cryptos = await Crypto.find().sort({ change24h: -1 });
-    return res.status(200).json(cryptos);
+    const data = await Crypto.find({ change24h: { $gt: 0 } }).sort({ change24h: -1 });
+    return res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ message: 'Server error.' });
+    return next(error);
   }
 }
 
-async function getNewListings(req, res) {
+export async function getNewListings(req, res, next) {
   try {
-    const cryptos = await Crypto.find().sort({ createdAt: -1 });
-    return res.status(200).json(cryptos);
+    const data = await Crypto.find().sort({ createdAt: -1 });
+    return res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ message: 'Server error.' });
+    return next(error);
   }
 }
 
-async function addCrypto(req, res) {
+export async function createCrypto(req, res, next) {
   try {
-    const { name, symbol, price, image, change24h } = req.body || {};
+    const payload = req.body || {};
+    const {
+      name,
+      symbol,
+      price,
+      image,
+      change24h,
+      change,
+      change_24h,
+    } = payload;
+    const raw24hChange = payload['24hChange'];
 
-    if (!name || !symbol || price === undefined || change24h === undefined) {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+    const normalizedImage = typeof image === 'string' ? image.trim() : '';
+    const resolvedChange = change24h ?? change ?? change_24h ?? raw24hChange;
+    const numericPrice = Number(price);
+    const numericChange = Number(resolvedChange);
+
+    if (
+      !normalizedName ||
+      !normalizedSymbol ||
+      !normalizedImage ||
+      Number.isNaN(numericPrice) ||
+      Number.isNaN(numericChange)
+    ) {
       return res.status(400).json({
-        message: 'Name, symbol, price, and change24h are required.',
+        message: 'name, symbol, price, image, and change24h are required with valid values.',
       });
     }
 
-    if (Number.isNaN(Number(price))) {
-      return res.status(400).json({ message: 'Price must be a number.' });
-    }
-
-    if (Number.isNaN(Number(change24h))) {
-      return res.status(400).json({ message: 'change24h must be a number.' });
-    }
-
-    const crypto = new Crypto({ name, symbol, price, image, change24h });
-    await crypto.save();
-
-    return res.status(201).json({
-      message: 'Crypto added successfully.',
-      crypto,
+    const created = await Crypto.create({
+      name: normalizedName,
+      symbol: normalizedSymbol,
+      price: numericPrice,
+      image: normalizedImage,
+      change24h: numericChange,
     });
-  } catch (error) {
-    if (error?.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message });
-    }
 
-    return res.status(500).json({ message: 'Server error.' });
+    return res.status(201).json(created);
+  } catch (error) {
+    return next(error);
   }
 }
 
-module.exports = { getAllCrypto, getGainers, getNewListings, addCrypto };

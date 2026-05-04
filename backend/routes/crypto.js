@@ -1,17 +1,17 @@
-const express = require('express');
+import { Router } from 'express';
 
-const {
+import {
   getAllCrypto,
-  getGainers,
+  getTopGainers,
   getNewListings,
-  addCrypto,
-} = require('../controllers/cryptoController');
+  createCrypto,
+} from '../controllers/cryptoController.js';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', getAllCrypto);
-router.get('/gainers', getGainers);
-router.get('/new', getNewListings);
-router.post('/', addCrypto);
+router.get('/crypto', getAllCrypto);
+router.get('/crypto/gainers', getTopGainers);
+router.get('/crypto/new', getNewListings);
+router.post('/crypto', createCrypto);
 
-module.exports = router;
+export default router;

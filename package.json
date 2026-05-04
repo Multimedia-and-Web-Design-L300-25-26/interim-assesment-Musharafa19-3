@@ -4,7 +4,9 @@
   "description": "[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/bMYWKvYv)\r # Interim Assessment: Full-Stack Integration – Coinbase Clone",
   "main": "index.js",
   "scripts": {
+    "dev": "node backend/server.js",
     "start": "node backend/server.js",
+    "seed": "node backend/scripts/seedCrypto.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -14,6 +16,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Multimedia-and-Web-Design-L300-25-26/interim-assesment-aee4/issues"
   },
