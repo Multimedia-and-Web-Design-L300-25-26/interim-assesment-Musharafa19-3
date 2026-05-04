@@ -39,6 +39,10 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+app.get('/', (req, res) => {
+  return res.status(200).json({ message: 'Backend is running. Use /health or /crypto endpoints.' });
+});
+
 app.get('/health', (req, res) => {
   return res.status(200).json({ status: 'ok' });
 });
