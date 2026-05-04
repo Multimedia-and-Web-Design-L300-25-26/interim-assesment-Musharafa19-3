@@ -17,7 +17,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
